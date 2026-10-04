@@ -1,0 +1,6 @@
+openai>=1.40
+psycopg[binary]>=3.2
+pgvector>=0.3
+numpy>=1.26
+python-dotenv>=1.0
+streamlit>=1.40

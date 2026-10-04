@@ -1,0 +1,120 @@
+{
+  "id": "TravelRagAssist1",
+  "name": "Travel Assistant (RAG)",
+  "nodes": [
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000001",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [0, 0],
+      "webhookId": "6b1d7f0e-3c2a-4e57-9a51-7d2f0b6c9e11",
+      "parameters": { "public": false, "options": {} }
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000002",
+      "name": "Test button",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 220],
+      "parameters": {}
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000003",
+      "name": "Test question",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 220],
+      "parameters": {
+        "jsCode": "// Used by the Test button. Change the question to try other ones.\nreturn [{ json: { question: 'Trips under 1000 DT?' } }];"
+      }
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000004",
+      "name": "Read filters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0],
+      "parameters": {
+        "jsCode": "// Hard facts (budget, month) are read with rules: vectors are bad at numbers.\n// -1 means \"no filter\".\nconst item = $input.first().json;\nconst question = item.chatInput ?? item.question;\nconst q = question.toLowerCase();\n\nconst price = q.match(/(?:under|below|less than|max(?:imum)?|moins de|budget(?: of)?)\\s*(\\d[\\d\\s,.]*\\d|\\d)/);\nconst max_price = price ? parseInt(price[1].replace(/\\D/g, ''), 10) : -1;\n\nconst months = {\n  january: 1, janvier: 1, february: 2, fevrier: 2, 'février': 2, march: 3, mars: 3,\n  april: 4, avril: 4, may: 5, mai: 5, june: 6, juin: 6, july: 7, juillet: 7,\n  august: 8, aout: 8, 'août': 8, september: 9, septembre: 9, october: 10, octobre: 10,\n  november: 11, novembre: 11, december: 12, decembre: 12, 'décembre': 12,\n};\nlet month = -1;\nfor (const [name, n] of Object.entries(months)) {\n  if (new RegExp(`(^|[^a-zà-ÿ])${name}([^a-zà-ÿ]|$)`).test(q)) { month = n; break; }\n}\n\nreturn [{ json: { question, max_price, month } }];"
+      }
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000005",
+      "name": "Embed question (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'nomic-embed-text', input: 'search_query: ' + $json.question }) }}",
+        "options": { "timeout": 120000 }
+      }
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000006",
+      "name": "Hybrid search (pgvector)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [880, 0],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH q AS (SELECT $1::vector AS v)\n(\n  SELECT 'offer' AS kind,\n         format('Offer: %s (%s, %s). %s, from %s to %s. Price: %s DT per person. Seats left: %s. %s',\n                o.title, d.city, d.country, o.duration, o.\"startDate\"::date, o.\"endDate\"::date,\n                o.price, o.\"availableSeats\", o.description) AS text\n  FROM rag_chunks c\n  JOIN travel_offers o ON o.id = c.offer_id\n  JOIN destinations d ON d.id = o.\"destinationId\", q\n  WHERE o.status = 'PUBLISHED' AND o.\"availableSeats\" > 0 AND o.\"startDate\" > now()\n    AND ($2::float < 0 OR o.price <= $2::float)\n    AND ($3::int < 0 OR extract(month FROM o.\"startDate\") = $3::int)\n  ORDER BY c.embedding <=> q.v\n  LIMIT 3\n)\nUNION ALL\n(\n  SELECT 'faq' AS kind, c.content AS text\n  FROM rag_chunks c, q\n  WHERE c.kind = 'faq'\n  ORDER BY c.embedding <=> q.v\n  LIMIT 2\n)",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json.embeddings[0]), $('Read filters').first().json.max_price, $('Read filters').first().json.month ] }}"
+        }
+      }
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000007",
+      "name": "Build prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0],
+      "parameters": {
+        "jsCode": "const question = $('Read filters').first().json.question;\n\n// Label each result [O1], [O2] for offers and [F1], [F2] for FAQ answers\nlet o = 0, f = 0;\nconst blocks = [];\nfor (const item of $input.all()) {\n  if (!item.json.text) continue;\n  const label = item.json.kind === 'offer' ? `O${++o}` : `F${++f}`;\n  blocks.push(`[${label}] ${item.json.text}`);\n}\n\nconst SYSTEM = \"You are the travel assistant of a Tunisian travel agency. Use ONLY the context. \" +\n  \"Each context block starts with its label in brackets, like [O1] for an offer or [F2] for a FAQ answer. \" +\n  \"The offers in the context are the only trips available: never mention other trips, prices or dates. \" +\n  \"If the context gives a rule (deposit, child age, visa, cancellation), apply it to the customer's situation. \" +\n  \"Answer in the customer's language, in 2 to 4 short sentences. \" +\n  \"End with the labels you used, like (source: O1, F2). \" +\n  \"If the context does not answer the question, reply exactly: I don't know. Please contact us on WhatsApp, Monday to Saturday, 9:00 to 18:00.\";\n\nreturn [{ json: {\n  model: 'llama3.2:3b',\n  stream: false,\n  options: { temperature: 0 },\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user', content: `Context:\\n${blocks.join('\\n\\n')}\\n\\nQuestion: ${question}` },\n  ],\n} }];"
+      }
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000008",
+      "name": "Write answer (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 180000 }
+      }
+    },
+    {
+      "id": "a1f0c3d2-0001-4000-8000-000000000009",
+      "name": "Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 0],
+      "parameters": {
+        "jsCode": "// The chat window shows the `output` field of the last node\nreturn [{ json: { output: $input.first().json.message.content } }];"
+      }
+    }
+  ],
+  "connections": {
+    "When chat message received": { "main": [[{ "node": "Read filters", "type": "main", "index": 0 }]] },
+    "Test button": { "main": [[{ "node": "Test question", "type": "main", "index": 0 }]] },
+    "Test question": { "main": [[{ "node": "Read filters", "type": "main", "index": 0 }]] },
+    "Read filters": { "main": [[{ "node": "Embed question (Ollama)", "type": "main", "index": 0 }]] },
+    "Embed question (Ollama)": { "main": [[{ "node": "Hybrid search (pgvector)", "type": "main", "index": 0 }]] },
+    "Hybrid search (pgvector)": { "main": [[{ "node": "Build prompt", "type": "main", "index": 0 }]] },
+    "Build prompt": { "main": [[{ "node": "Write answer (Ollama)", "type": "main", "index": 0 }]] },
+    "Write answer (Ollama)": { "main": [[{ "node": "Reply", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
