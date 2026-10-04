@@ -1,5 +1,6 @@
 # AI Travel Assistant — RAG Chatbot, MCP Server & n8n Workflow
 
+[![CI](https://github.com/abdelhamid-007/ai-travel-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/abdelhamid-007/ai-travel-assistant/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
 ![Ollama](https://img.shields.io/badge/LLM-Ollama%20(local)-000000)
@@ -88,16 +89,29 @@ streamlit run app.py
 
 Then see each folder's README: [RAG Chatbot](rag-chatbot/README.md) · [MCP Server](mcp-server/README.md) · [n8n Workflow](n8n-workflow/README.md).
 
+## Testing
+
+Two levels of tests:
+
+| Test | Needs | Command |
+|---|---|---|
+| **Unit tests:** budget and month filters (English and French), citation checking | Nothing (runs in CI on every push) | `pytest` |
+| **End-to-end evaluation:** 12 real questions through search, answer and check | Database + Ollama | `cd rag-chatbot && python evaluate.py` |
+
+Lint with `ruff check .`. Both lint and unit tests run in [GitHub Actions](.github/workflows/ci.yml) on every push and pull request.
+
 ## Project structure
 
 ```
 ai-travel-assistant/
 ├── rag-chatbot/          # 1. Python RAG assistant + Streamlit chat + test suite
-│   ├── assistant.py      #    filters, hybrid search, answer, answer check
+│   ├── assistant.py      #    hybrid search, answer, answer check
+│   ├── rules.py          #    filter reading + citation finding (pure logic, unit-tested)
 │   ├── app.py            #    Streamlit chat page
-│   ├── evaluate.py       #    12-question automatic test suite
+│   ├── evaluate.py       #    12-question end-to-end evaluation
 │   ├── ingest.py         #    builds the vectors
-│   └── db.py
+│   ├── db.py
+│   └── tests/            #    unit tests (pytest)
 ├── mcp-server/           # 2. MCP server with 3 read-only tools
 │   ├── mcp_server.py
 │   ├── test_mcp.py       #    calls every tool over the MCP protocol

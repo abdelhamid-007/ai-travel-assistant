@@ -1,6 +1,5 @@
 """Chat page for the travel assistant. Run: streamlit run app.py"""
 import streamlit as st
-
 from assistant import ask
 
 st.set_page_config(page_title="Travel Assistant", page_icon="✈️")

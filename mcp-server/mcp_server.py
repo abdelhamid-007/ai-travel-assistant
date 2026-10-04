@@ -3,10 +3,9 @@
 The AI decides when to call these tools and writes the answer itself. Our job is only to return
 correct, live data. Never print() here: stdout is the channel the AI reads messages from.
 """
+from db import connect, embed
 from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
-
-from db import connect, embed
 
 server = MCPServer(
     name="travel-agency",
