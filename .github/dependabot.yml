@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /rag-chatbot
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: pip
+    directory: /mcp-server
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

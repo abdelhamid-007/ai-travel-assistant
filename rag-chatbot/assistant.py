@@ -1,30 +1,14 @@
-import re
-
 from db import client, connect, embed
+from rules import find_cited, read_filters
 
 CHAT_MODEL = "llama3.2:3b"  # writes the answers
-CHECK_MODEL = "mistral"     # checks them (see stage 3: llama3.2:3b can't judge)
+CHECK_MODEL = "mistral"     # checks them (llama3.2:3b answered NO to every answer when tested as a judge)
 DONT_KNOW = "I don't know. Please contact us on WhatsApp, Monday to Saturday, 9:00 to 18:00."
-
-MONTHS = {
-    "january": 1, "janvier": 1, "february": 2, "fevrier": 2, "février": 2, "march": 3, "mars": 3,
-    "april": 4, "avril": 4, "may": 5, "mai": 5, "june": 6, "juin": 6, "july": 7, "juillet": 7,
-    "august": 8, "aout": 8, "août": 8, "september": 9, "septembre": 9, "october": 10, "octobre": 10,
-    "november": 11, "novembre": 11, "december": 12, "decembre": 12, "décembre": 12,
-}
 
 conn = connect()
 
 
-# 1. Read hard facts from the question with simple rules. Vectors are bad at "under 2000 DT".
-def read_filters(question):
-    q = question.lower()
-    price = re.search(r"(?:under|below|less than|max(?:imum)?|moins de|budget(?: of)?)\s*(\d[\d\s,.]*\d|\d)", q)
-    max_price = int(re.sub(r"\D", "", price.group(1))) if price else None
-    month = next((n for name, n in MONTHS.items() if re.search(rf"\b{name}\b", q)), None)
-    return {"max_price": max_price, "month": month}
-
-
+# 1. Filters (budget, month) are read with rules: see rules.read_filters
 # 2. Hybrid search: SQL filters on live data + vector ranking by meaning
 def search(question, filters):
     vec = embed([question], "search_query")[0]
@@ -90,12 +74,7 @@ def ask(question):
     context = "\n\n".join(f"[{label}] {text}" for label, text in blocks.items())
 
     answer = draft = chat(ANSWER_RULES, f"Context:\n{context}\n\nQuestion: {question}")
-    cited = [label for label in re.findall(r"\b([OF]\d+)\b", answer) if label in blocks]
-    # Small models often forget a label. An offer whose title is in the answer was used, so check it too.
-    for label, text in blocks.items():
-        title = re.match(r"Offer: (.+?) \(", text)
-        if title and title.group(1).lower() in answer.lower() and label not in cited:
-            cited.append(label)
+    cited = find_cited(answer, blocks)
 
     if "don't know" in answer.lower() or "je ne sais pas" in answer.lower():
         status = "dont_know"

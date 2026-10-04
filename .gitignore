@@ -16,3 +16,7 @@ db/
 .idea/
 .DS_Store
 Thumbs.db
+
+# tool caches
+.pytest_cache/
+.ruff_cache/

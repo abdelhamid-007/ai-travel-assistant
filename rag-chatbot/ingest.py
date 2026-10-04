@@ -35,7 +35,7 @@ with conn.transaction():
     with conn.cursor() as cur:
         cur.executemany(
             "INSERT INTO rag_chunks (id, kind, offer_id, content, embedding) VALUES (%s, %s, %s, %s, %s)",
-            [(*row, vec) for row, vec in zip(rows, vectors)],
+            [(*row, vec) for row, vec in zip(rows, vectors, strict=True)],
         )
 
 print(f"Stored {len(offer_rows)} offers and {len(faq_rows)} FAQ chunks")
