@@ -1,4 +1,4 @@
-# AI Travel Assistant — RAG Chatbot, MCP Server & n8n Workflow
+# AI Travel Assistant — RAG Chatbot, MCP Server, n8n Workflow & Voice Agent
 
 [![CI](https://github.com/abdelhamid-007/ai-travel-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/abdelhamid-007/ai-travel-assistant/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
@@ -6,17 +6,19 @@
 ![Ollama](https://img.shields.io/badge/LLM-Ollama%20(local)-000000)
 ![MCP](https://img.shields.io/badge/MCP-server-8A2BE2)
 ![n8n](https://img.shields.io/badge/n8n-workflow-EA4B71?logo=n8n&logoColor=white)
+![Vapi](https://img.shields.io/badge/Voice-Vapi-5A3FFF)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-An AI assistant for a travel agency that answers customer questions **only from live data** in PostgreSQL: offers, prices, dates, seats left and agency rules. Built three ways, one folder each:
+An AI assistant for a travel agency that answers customer questions **only from live data** in PostgreSQL: offers, prices, dates, seats left and agency rules. Built four ways, one folder each:
 
 | | Project | For a client who wants… |
 |---|---|---|
 | 1 | [**RAG Chatbot**](rag-chatbot/) | a chat on their website, written in Python |
 | 2 | [**MCP Server**](mcp-server/) | Claude or ChatGPT to search their own database |
 | 3 | [**n8n Workflow**](n8n-workflow/) | an AI workflow their team can edit without code |
+| 4 | [**Voice Agent**](voice-agent/) | an AI receptionist that answers phone calls ([demo video](voice-agent/demo/voice_agent_demo.mp4)) |
 
-All three use the same database and run on **local models with Ollama**, so customer data never leaves the server.
+All four use the same database. Projects 1–3 run on **local models with Ollama**, so customer data never leaves the server; the voice agent uses Vapi with GPT-4o-mini and calls back into the same live data.
 
 > The offers and rules in [`data/`](data/) are realistic demo data, not a real agency's prices.
 
@@ -75,7 +77,7 @@ ollama pull nomic-embed-text
 ollama pull llama3.2:3b
 ollama pull mistral
 
-# 2. Database: tables + demo data (shared by all three projects)
+# 2. Database: tables + demo data (shared by all projects)
 psql "$DATABASE_URL" -f data/schema.sql
 psql "$DATABASE_URL" -f data/seed.sql
 
@@ -87,7 +89,7 @@ python ingest.py
 streamlit run app.py
 ```
 
-Then see each folder's README: [RAG Chatbot](rag-chatbot/README.md) · [MCP Server](mcp-server/README.md) · [n8n Workflow](n8n-workflow/README.md).
+Then see each folder's README: [RAG Chatbot](rag-chatbot/README.md) · [MCP Server](mcp-server/README.md) · [n8n Workflow](n8n-workflow/README.md) · [Voice Agent](voice-agent/README.md).
 
 ## Testing
 
@@ -118,7 +120,12 @@ ai-travel-assistant/
 │   └── db.py
 ├── n8n-workflow/         # 3. n8n workflow + import guide
 │   └── travel_assistant.json
-└── data/                 # shared by all three
+├── voice-agent/          # 4. Vapi phone agent + FastAPI tool server
+│   ├── server.py         #    receives Vapi tool calls, checks the secret
+│   ├── tools.py          #    live database search, auto-reconnect
+│   ├── create_assistant.py
+│   └── demo/             #    demo video (agent audio only)
+└── data/                 # shared by all
     ├── schema.sql        #    tables + pgvector
     ├── seed.sql          #    14 demo offers
     └── agency_faq.txt    #    12 agency rules
@@ -132,7 +139,7 @@ ai-travel-assistant/
 
 ## Author
 
-**Abdelhamid B.** — AI Agent & Automation Developer (n8n, RAG, MCP, Python)
+**Abdelhamid B.** — AI Agent & Automation Developer (n8n, RAG, MCP, Voice AI, Python)
 [Hire me on Upwork](https://www.upwork.com/freelancers/~013a26f2e99bccc385)
 
 ## License
