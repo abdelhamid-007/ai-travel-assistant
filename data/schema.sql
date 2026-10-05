@@ -36,3 +36,12 @@ CREATE TABLE rag_chunks (
   content   text NOT NULL,
   embedding vector(768) NOT NULL      -- nomic-embed-text makes 768 numbers per text
 );
+
+-- Callers who asked the voice agent for a human to call them back
+CREATE TABLE callback_requests (
+  id         serial PRIMARY KEY,
+  name       text NOT NULL,
+  phone      text NOT NULL,
+  interest   text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
