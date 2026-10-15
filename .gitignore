@@ -19,3 +19,4 @@ Thumbs.db
 
 # generated videos
 ai-generater-bot/output/
+*.zip
