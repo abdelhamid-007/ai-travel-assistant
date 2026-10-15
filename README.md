@@ -7,13 +7,14 @@
 ![n8n](https://img.shields.io/badge/n8n-workflow-EA4B71?logo=n8n&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-An AI assistant for a travel agency that answers customer questions **only from live data** in PostgreSQL: offers, prices, dates, seats left and agency rules. Built three ways, one folder each:
+An AI assistant for a travel agency that answers customer questions **only from live data** in PostgreSQL: offers, prices, dates, seats left and agency rules. Built three ways, plus a video-automation bot, one folder each:
 
 | | Project | For a client who wants… |
 |---|---|---|
 | 1 | [**RAG Chatbot**](rag-chatbot/) | a chat on their website, written in Python |
 | 2 | [**MCP Server**](mcp-server/) | Claude or ChatGPT to search their own database |
 | 3 | [**n8n Workflow**](n8n-workflow/) | an AI workflow their team can edit without code |
+| 4 | [**AI Generater Bot**](ai-generater-bot/) | videos created automatically and posted on schedule, controlled from Telegram |
 
 All three use the same database and run on **local models with Ollama**, so customer data never leaves the server.
 

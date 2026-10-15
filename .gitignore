@@ -16,3 +16,6 @@ db/
 .idea/
 .DS_Store
 Thumbs.db
+
+# generated videos
+ai-generater-bot/output/
