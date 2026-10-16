@@ -7,6 +7,8 @@ import urllib.request
 import uuid
 from pathlib import Path
 
+import common  # noqa: F401  (loads .env before TOKEN is read)
+
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 

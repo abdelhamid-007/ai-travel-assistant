@@ -6,6 +6,20 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).parent
+
+
+def load_env(path=ROOT / ".env"):
+    """Read KEY=VALUE lines from .env (real environment variables win)."""
+    if not Path(path).exists():
+        return
+    for line in Path(path).read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+load_env()
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", ROOT / "output"))
 DB_PATH = Path(os.getenv("QUEUE_DB", ROOT / "output" / "queue.sqlite"))
 
